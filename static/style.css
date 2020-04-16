@@ -1,0 +1,15 @@
+.list-group {
+    height: 200px;
+    overflow: auto;
+  }
+
+.list-group-item {
+    padding: .25rem 1rem;
+  }
+.far, .fas {
+    display: none;
+}
+
+li:hover .far, li:hover .fas, .far:hover, .fas:hover, h5:hover + .far {
+    display: inline-block;
+}

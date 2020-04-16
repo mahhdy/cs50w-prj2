@@ -15,20 +15,23 @@ online_users = set()
 @app.route("/")
 def index():
     return render_template('index.html')
+@app.route("/ajax/first")
+def ajax_all():
+    return jsonify({'users':list(online_users),'channels':[*messages]})   
 
 @socketio.on('message received')
 def add_message():
     emit('user Connected', {'data': 'Connected'})
 
-@socketio.on('disconnect')
-def test_disconnect():
-    print('Client disconnected')
+@socketio.on('user logout')
+def user_disconnect(data):
+    user=data['user']
+    online_users.discard(user)
+    emit('all users',{'users':list(online_users)}, broadcast=True)    
 
 @socketio.on('user connect')
 def userJoin(data):
-    print('received args: ' +data['user'])
     online_users.add(data['user'])
-    print(online_users)
     emit('all users',{'users':list(online_users)}, broadcast=True)
 @socketio.on('channel created')
 def add_channel(data):
@@ -36,9 +39,21 @@ def add_channel(data):
     print(c)
     if c in messages:
         return ""
-    messages[c]={users:[],messages:[],created_by:data['user']}
+    messages[c]={'users':[],'messages':[],'created_by':data['user']}
     emit('all channels',{'channels':[*messages]}, broadcast=True)
+@socketio.on('join')
+def on_join(data):
+    user = data['user']
+    room = data['room']
+    join_room(room)
+    send(user + ' has entered the room.', room=room)
 
+@socketio.on('leave')
+def on_leave(data):
+    user = data['user']
+    room = data['room']
+    leave_room(room)
+    send(user + ' has left the room.', room=room)
 
 
 
