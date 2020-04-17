@@ -1,5 +1,4 @@
 import os
-
 from flask import Flask, render_template, jsonify, request
 from flask_socketio import SocketIO,send, emit, join_room, leave_room
 from werkzeug.utils import secure_filename
@@ -10,14 +9,24 @@ app.config["UPLOAD_DIR"] = os.getenv("UPLOAD_DIR")
 socketio = SocketIO(app)
 MESSAGES_LIMIT = 255
 messages = {}
-online_users = set()
+online_users = {}
 
 @app.route("/")
 def index():
     return render_template('index.html')
 @app.route("/ajax/first")
 def ajax_all():
-    return jsonify({'users':list(online_users),'channels':[*messages]})   
+    users=[]
+    for a,b in online_users.items():
+        users.append([a,b])
+    return jsonify({'users':users,'channels':[*messages]})
+@app.route("/ajax/messeges")
+def ajax_channel(channel):
+    
+    users=[]
+    for a,b in online_users.items():
+        users.append([a,b])
+    return jsonify({'users':users,'channels':[*messages]})
 
 @socketio.on('message received')
 def add_message():
@@ -26,17 +35,17 @@ def add_message():
 @socketio.on('user logout')
 def user_disconnect(data):
     user=data['user']
-    online_users.discard(user)
-    emit('all users',{'users':list(online_users)}, broadcast=True)    
+    online_users.pop(user,None)
+    emit('all users',{'users':[*online_users]}, broadcast=True)    
 
 @socketio.on('user connect')
 def userJoin(data):
-    online_users.add(data['user'])
-    emit('all users',{'users':list(online_users)}, broadcast=True)
+    user=data['user']
+    online_users[user]=request.sid
+    emit('all users',{'users':online_users.items()}, broadcast=True)
 @socketio.on('channel created')
 def add_channel(data):
     c=str(data['channel']).strip()
-    print(c)
     if c in messages:
         return ""
     messages[c]={'users':[],'messages':[],'created_by':data['user']}

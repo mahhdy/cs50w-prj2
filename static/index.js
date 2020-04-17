@@ -75,16 +75,20 @@ const loadUandC = () => {
 }
 const updateChannels=list=>{
   $('#channels').empty();
-  list.forEach(el => {
-    $('#channels').append(`<li class="list-group-item">${el}</li>`)
-  });
+  list.forEach(el => $('#channels').append(channelLine(el)));
 }
 const updateUsers=list=>{
   $('#onUsers').empty();
   list.forEach(el => {
-    act = el == user() ? 'active' : '';
-    $('#onUsers').append(`<li class="list-group-item ${act}">${el}</li>`)
+    act = el[0] == user() ? 'active' : '';
+    $('#onUsers').append(userLine(el,act));
   });
 }
-const userLine=a=> `<li class="list-group-item">${a[0]}<i class="far fa-comments fa-lg ml-2" href='${a[1]}' data-toggle="tooltip" data-placement="right" title='chat'></i></li>`;
-const channelLine=a=>`<li class="list-group-item">${a[0]}<i class="fas fa-sign-in-alt fa-lg ml-2" href='${a[1]}' data-toggle="tooltip" data-placement="right" title='Join'></i></li>`;
+const userLine=(a,b)=> `<li class="list-group-item ${b}">${a[0]}<i class="far fa-comments fa-lg ml-2" onclick='sendPM("${a[1]}")' data-toggle="tooltip" data-placement="right" title='chat'></i></li>`;
+const channelLine=a=>`<li class="list-group-item">${a}<i class="fas fa-sign-in-alt fa-lg ml-2" onclick='joinChannel("${a[0]}")' data-toggle="tooltip" data-placement="right" title='Join'></i></li>`;
+const joinChannel=name=>{
+  alert('I am joined to ' + name.toString());
+}
+const sendPM=uID=>{
+  alert('I am going to chat at ' + uID.toString() + ' channel');
+}
