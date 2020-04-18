@@ -12,6 +12,10 @@ messages = {}
 online_users = {}
 def get_users():
     return [list(x) for x in online_users.items()]
+def get_updates():
+    return {'users':get_users(),'msg':messages,'channels':[*messages]}
+def sentUpdate():
+    emit('update',{'users':get_users(),'msg':messages,'channels':[*messages]}, broadcast=True)
 @app.route("/")
 def index():
     return render_template('index.html')
@@ -33,20 +37,38 @@ def ajax_channel():
 def channel_messages(obj):
     messages[obj['room']]['messages'].append(obj['msg'])
     socketio.emit('new message',{'msg':obj['msg'],'user':obj['user']}, room=obj['room'])
-@socketio.on('message received')
-def add_message():
-    emit('user Connected', {'data': 'Connected'})
-socketio.on_event('new message',channel_messages)
+socketio.on_event('new message',channel_messages)    
+# @socketio.on('message received')
+# def add_message():
+#     emit('user Connected', {'data': 'Connected'})
 @socketio.on('user logout')
 def user_disconnect(data):
     user=data['user']
+    channel=data['room']
     online_users.pop(user,None)
-    emit('all users',{'users':[*online_users]}, broadcast=True)
+    if channel:
+        if channel in messages:
+            if user in messages[channel]['users']:
+                messages[channel]['users'].remove(user)
+                leave_room(channel)
+    sentUpdate()
+    # emit('all users',{'users':[*online_users]}, broadcast=True)
 @socketio.on('user connect')
 def userJoin(data):
     user=data['user']
     online_users[user]=request.sid
-    emit('all users',{'users':get_users()}, broadcast=True)
+    sentUpdate()
+    # emit('all users',{'users':get_users()}, broadcast=True)
+@socketio.on('user online')
+def on_online(d):
+    u=d['user']
+    if not u in online_users:
+        online_users[u]=request.sid
+    if d['room']:
+        if not d['room'] in messages:
+            messages[d['room']]={'users':[u],'messages':[[u,'Room is Activated']],'created_by':u}
+        join_room(d['room'])
+    sentUpdate()
 @socketio.on('channel created')
 def add_channel(data):
     c=str(data['channel']).strip()
@@ -54,14 +76,21 @@ def add_channel(data):
         return ""
     intro=[[data['user'],'Channel is created by '+data['user']]]
     messages[c]={'users':[],'messages':intro,'created_by':data['user']}
-    emit('all channels',{'channels':[*messages]}, broadcast=True)
+    sentUpdate()
+    # emit('all channels',{'channels':[*messages]}, broadcast=True)
 @socketio.on('join')
 def on_join(data):
     d=data
     u = d['user']
+    r=d['room']
     d['msg']=[u,u + ' has entered the room.']
-    join_room(d['room'])
+    join_room(r)
+    m=messages[r]
+    print(m,file=sys.stderr)
+    print(m['users'],file=sys.stderr)
+    m['users'].append(u)
     channel_messages(d)
+
 @socketio.on('leave')
 def on_leave(data):
     user = data['user']
