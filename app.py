@@ -1,4 +1,4 @@
-import os
+import os,sys
 from flask import Flask, render_template, jsonify, request
 from flask_socketio import SocketIO,send, emit, join_room, leave_room
 from werkzeug.utils import secure_filename
@@ -10,53 +10,58 @@ socketio = SocketIO(app)
 MESSAGES_LIMIT = 255
 messages = {}
 online_users = {}
-
+def get_users():
+    return [list(x) for x in online_users.items()]
 @app.route("/")
 def index():
     return render_template('index.html')
+@socketio.on_error()        # Handles the default namespace
+def error_handler(e):
+    print(e)
+    print('Error Occured at '+ request.event["message"]) # "my error event"
+    print(request.event["args"])    # (data,)
 @app.route("/ajax/first")
 def ajax_all():
-    users=[]
-    for a,b in online_users.items():
-        users.append([a,b])
-    return jsonify({'users':users,'channels':[*messages]})
-@app.route("/ajax/messeges")
-def ajax_channel(channel):
-    
-    users=[]
-    for a,b in online_users.items():
-        users.append([a,b])
-    return jsonify({'users':users,'channels':[*messages]})
-
+    return jsonify({'users':get_users(),'channels':[*messages]})
+@app.route("/ajax/messages")
+def ajax_channel():
+    d=request.values.get('channel')
+    if d in messages:
+        lst=messages[d]
+        return jsonify({'users':lst['users'],'msg':lst['messages']})
+    return jsonify({'users':[],'msg':[]}) 
+def channel_messages(obj):
+    messages[obj['room']]['messages'].append(obj['msg'])
+    socketio.emit('new message',{'msg':obj['msg'],'user':obj['user']}, room=obj['room'])
 @socketio.on('message received')
 def add_message():
     emit('user Connected', {'data': 'Connected'})
-
+socketio.on_event('new message',channel_messages)
 @socketio.on('user logout')
 def user_disconnect(data):
     user=data['user']
     online_users.pop(user,None)
-    emit('all users',{'users':[*online_users]}, broadcast=True)    
-
+    emit('all users',{'users':[*online_users]}, broadcast=True)
 @socketio.on('user connect')
 def userJoin(data):
     user=data['user']
     online_users[user]=request.sid
-    emit('all users',{'users':online_users.items()}, broadcast=True)
+    emit('all users',{'users':get_users()}, broadcast=True)
 @socketio.on('channel created')
 def add_channel(data):
     c=str(data['channel']).strip()
     if c in messages:
         return ""
-    messages[c]={'users':[],'messages':[],'created_by':data['user']}
+    intro=[[data['user'],'Channel is created by '+data['user']]]
+    messages[c]={'users':[],'messages':intro,'created_by':data['user']}
     emit('all channels',{'channels':[*messages]}, broadcast=True)
 @socketio.on('join')
 def on_join(data):
-    user = data['user']
-    room = data['room']
-    join_room(room)
-    send(user + ' has entered the room.', room=room)
-
+    d=data
+    u = d['user']
+    d['msg']=[u,u + ' has entered the room.']
+    join_room(d['room'])
+    channel_messages(d)
 @socketio.on('leave')
 def on_leave(data):
     user = data['user']
