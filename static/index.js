@@ -5,7 +5,7 @@ $(() => {
   const picker=new EmojiButton();
   picker.on('emoji',emoji=>inputUpdate($('#msg'),emoji));//document.querySelector('#msg').value += emoji
   $('#emj').click(()=>picker.togglePicker());
-
+  $('.toast').toast();
 });
 const inputUpdate=(el,add)=>{
   const s=$(el)[0].selectionStart;
@@ -20,8 +20,8 @@ const channelLine=(a,b)=>`<li class="list-group-item ${b}">${a}<i class="fas fa-
 const messageLine=a=>{
   let node='';
   if (a[0] == user()){
-    node=`<div class="text-right">${a[1]} :<small class="text-muted"><u>${a[0]}</u></small></div>`;
-  } else {node=`<div class="text-left"><small class="text-muted"><u>${a[0]}</u></small>: ${a[1]}</div>`;}
+    node=`<div class="text-right">${a[1]} :<small class="text-muted"><u>${a[0]}</u> (${a[2]}) </small></div>`;
+  } else {node=`<div class="text-left"><small class="text-muted"> (${a[2]}) <u>${a[0]}</u></small>: ${a[1]}</div>`;}
   $('#channelMessages').append(node);
 };
 const faceOf = () => {
@@ -95,15 +95,18 @@ const addChannel = (justModal) => {
   if (justModal) {
     return $(node).modal();
   }
-  let c = $('#channelName').val();
+  let c = $('#channelName').val().trim();
+  cList=$('#channels li').text().split('Join');
   if (c.length < 3) {
     return alert('PLease Select Stronger Name!');
   }
+  if (cList.indexOf(c)>-1){return alert('this Channel name already exist!')}
   $(node).modal('hide');  
   $('#channelName').val('');
   socket.emit('channel created', {
     'channel': c,
-    'user': user()
+    'user': user(),
+    'time':moment().format('HH:mm:ss')
   });
 };
 const loadUandC = () => {
@@ -117,8 +120,6 @@ const loadMsg = () => {
     url: '/ajax/messages',
     data:{'channel':channel()}
   }).done(data => {
-    console.log('messages: ');
-  console.log(data);
     data.msg.forEach(e=>messageLine(e));
     // updateChannels(data.channels);
     // updateUsers(data.users);
@@ -141,16 +142,18 @@ const joinChannel=name=>{
   localStorage.setItem('channel',name);
   $('#channelMessages').empty();
   $('#chName').text(name);
-  socket.emit('join',{'user':user(),'room':name});
+  socket.emit('join',{'user':user(),'room':name,'time':moment().format('HH:mm:ss')});
 };
 const sendPM=uID=>{
-  alert('I am going to chat at ' + uID.toString() + ' channel');
+  joinChannel(uID);
 };
 const sendMsg=()=>{
   const msg=$('#msg').val().trim();
   const u=user();
   const c=channel();
+  if (c=='None'){return alert('Please join a channel first!');}
+  const t=moment().format('HH:mm:ss');
   if (msg.length<2 || msg.length>100){return alert('message should be more than 3 and less than 100 characters!');}
   $('#msg').val('');
-  socket.emit('new message',{'user':u,'msg':[u,msg],'room':c});
+  socket.emit('new message',{'user':u,'msg':[u,msg,t],'room':c,'time':t});
 };

@@ -1,4 +1,5 @@
 import os,sys
+from collections import OrderedDict
 from flask import Flask, render_template, jsonify, request
 from flask_socketio import SocketIO,send, emit, join_room, leave_room
 from werkzeug.utils import secure_filename
@@ -7,15 +8,13 @@ app = Flask(__name__)
 app.config["SECRET_KEY"] = os.getenv("SECRET_KEY")
 app.config["UPLOAD_DIR"] = os.getenv("UPLOAD_DIR")
 socketio = SocketIO(app)
-MESSAGES_LIMIT = 255
-messages = {}
+MESSAGES_LIMIT = 100
+channels = {}
 online_users = {}
 def get_users():
     return [list(x) for x in online_users.items()]
-def get_updates():
-    return {'users':get_users(),'msg':messages,'channels':[*messages]}
 def sentUpdate():
-    emit('update',{'users':get_users(),'msg':messages,'channels':[*messages]}, broadcast=True)
+    emit('update',{'users':get_users(),'msg':channels,'channels':[*channels]}, broadcast=True)
 @app.route("/")
 def index():
     return render_template('index.html')
@@ -26,33 +25,30 @@ def error_handler(e):
     print(request.event["args"])    # (data,)
 @app.route("/ajax/first")
 def ajax_all():
-    return jsonify({'users':get_users(),'channels':[*messages]})
+    return jsonify({'users':get_users(),'channels':[*channels]})
 @app.route("/ajax/messages")
 def ajax_channel():
     d=request.values.get('channel')
-    if d in messages:
-        lst=messages[d]
-        return jsonify({'users':lst['users'],'msg':lst['messages']})
+    if d in channels:
+        lst=channels[d]
+        return jsonify({'users':lst['users'],'msg':lst['messages'][-100:]})
     return jsonify({'users':[],'msg':[]}) 
 def channel_messages(obj):
-    messages[obj['room']]['messages'].append(obj['msg'])
+    channels[obj['room']]['messages'].append(obj['msg'])
     socketio.emit('new message',{'msg':obj['msg'],'user':obj['user']}, room=obj['room'])
 socketio.on_event('new message',channel_messages)    
-# @socketio.on('message received')
-# def add_message():
-#     emit('user Connected', {'data': 'Connected'})
+
 @socketio.on('user logout')
 def user_disconnect(data):
     user=data['user']
     channel=data['room']
     online_users.pop(user,None)
     if channel:
-        if channel in messages:
-            if user in messages[channel]['users']:
-                messages[channel]['users'].remove(user)
+        if channel in channels:
+            if user in channels[channel]['users']:
+                channels[channel]['users'].remove(user)
                 leave_room(channel)
     sentUpdate()
-    # emit('all users',{'users':[*online_users]}, broadcast=True)
 @socketio.on('user connect')
 def userJoin(data):
     user=data['user']
@@ -65,29 +61,26 @@ def on_online(d):
     if not u in online_users:
         online_users[u]=request.sid
     if d['room']:
-        if not d['room'] in messages:
-            messages[d['room']]={'users':[u],'messages':[[u,'Room is Activated']],'created_by':u}
+        if not d['room'] in channels:
+            channels[d['room']]={'users':[u],'messages':[[u,'Room is Activated',d['time']]],'created_by':u}
         join_room(d['room'])
     sentUpdate()
 @socketio.on('channel created')
 def add_channel(data):
     c=str(data['channel']).strip()
-    if c in messages:
+    if c in channels:
         return ""
-    intro=[[data['user'],'Channel is created by '+data['user']]]
-    messages[c]={'users':[],'messages':intro,'created_by':data['user']}
+    intro=[[data['user'],'Channel is created by '+data['user'],data['time']]]
+    channels[c]={'users':[],'messages':intro,'created_by':data['user']}
     sentUpdate()
-    # emit('all channels',{'channels':[*messages]}, broadcast=True)
 @socketio.on('join')
 def on_join(data):
     d=data
     u = d['user']
     r=d['room']
-    d['msg']=[u,u + ' has entered the room.']
+    d['msg']=[u,u + ' has entered the room.',d['time']]
     join_room(r)
-    m=messages[r]
-    print(m,file=sys.stderr)
-    print(m['users'],file=sys.stderr)
+    m=channels[r]
     m['users'].append(u)
     channel_messages(d)
 
