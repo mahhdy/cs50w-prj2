@@ -10,6 +10,6 @@
     display: none;
 }
 
-li:hover .far, li:hover .fas, .far:hover, .fas:hover, h5:hover + .far {
+li:hover .far, li:hover .fas, .far:hover, .fas:hover, h5:hover + .far, #chNameP:hover >.fas{
     display: inline-block;
 }

@@ -3,9 +3,11 @@ $(() => {
   $('[data-toggle="tooltip"]').tooltip();
   $('#userJoin').on('click', join);
   const picker=new EmojiButton();
-  picker.on('emoji',emoji=>inputUpdate($('#msg'),emoji));//document.querySelector('#msg').value += emoji
+  picker.on('emoji',emoji=>inputUpdate($('#msg'),emoji));
   $('#emj').click(()=>picker.togglePicker());
-  $('.toast').toast();
+  $('#msg').keypress(e=>{if (e.which == 13) {sendMsg(); return false}});
+  $('#channelName').keypress(e=>{if (e.which == 13) {addChannel(); return false}});
+  // $('.toast').toast();
 });
 const inputUpdate=(el,add)=>{
   const s=$(el)[0].selectionStart;
@@ -45,11 +47,8 @@ const logout = () => {
   let c= channel();
   localStorage.removeItem('user');
   localStorage.removeItem("channel");
-  console.log(u+' is log out!');
-  socket.emit('user logout', {
-    'user': u,
-    'room':c
-  });
+  console.log(u+' is logged out!');
+  socket.emit('user logout', {'user': u,'room':c});
   faceOf();
 };
 const updateEnv=m=>{
@@ -61,23 +60,16 @@ const updateEnv=m=>{
   $('#chName').text(channel()?channel():'None');
 };
 socket.on('update', (m) => {
-  console.log(m);
   updateEnv(m);
 });
-// socket.on('all users', (m) => {
-//   $('#onUsers').empty();
-//   updateUsers(m.users);
-// });
-// socket.on('all channels', (m) => {
-//   $('#channels').empty();
-//   updateChannels(m.channels);
-// });
 socket.on('joint to channel', (m) => {
   $('#channelMessages').empty();
   updateChannels(m.channels);
 });
 socket.on('new message', (data) => {
-  $('#channelMessages').append(messageLine(data.msg));
+  $('#channelMessages').empty();
+  data.msg.forEach(e=>messageLine(e));
+  // $('#channelMessages').append(messageLine(data.msg));
 });
 const join = () => {
   const u = $('#username').val();
@@ -88,7 +80,7 @@ const join = () => {
   connect(u);
   faceOf();
 };
-const online=u=>socket.emit('user online', {'user': u, 'room':channel()?channel():null});
+const online=u=>socket.emit('user online', {'user': u, 'room':channel()?channel():null,'time':moment().format('HH:mm:ss')});
 const connect=u=>socket.emit('user connect', {'user': u});
 const addChannel = (justModal) => {
   const node=$('#addChannelModal');
@@ -109,22 +101,23 @@ const addChannel = (justModal) => {
     'time':moment().format('HH:mm:ss')
   });
 };
+const loadAll=()=>{
+  $.ajax({
+    url: '/ajax/all',
+  }).done(data => console.log(data))
+  return 'Done';
+};
 const loadUandC = () => {
   $.ajax({
     url: '/ajax/first',
   }).done(updateEnv);
 };
 const loadMsg = () => {
-  // joinChannel(channel());
   $.ajax({
     url: '/ajax/messages',
     data:{'channel':channel()}
   }).done(data => {
     data.msg.forEach(e=>messageLine(e));
-    // updateChannels(data.channels);
-    // updateUsers(data.users);
-    // $('#usCount').text(data.users.length);
-    // $('#chName').text(channel()?channel():'None');
   }).fail(function() {
     alert( "error Loading Messages" );
   });
@@ -142,10 +135,11 @@ const joinChannel=name=>{
   localStorage.setItem('channel',name);
   $('#channelMessages').empty();
   $('#chName').text(name);
+  updateChannels(channelLists());
   socket.emit('join',{'user':user(),'room':name,'time':moment().format('HH:mm:ss')});
 };
 const sendPM=uID=>{
-  joinChannel(uID);
+  // joinChannel(uID);
 };
 const sendMsg=()=>{
   const msg=$('#msg').val().trim();
@@ -157,3 +151,15 @@ const sendMsg=()=>{
   $('#msg').val('');
   socket.emit('new message',{'user':u,'msg':[u,msg,t],'room':c,'time':t});
 };
+const channelLists=()=>{
+  l=$('#channels li').text().split('Join');
+  l.pop();
+  return l;
+}
+const leaveRoom=()=>{
+  socket.emit('leave',{'user':user(),'room':channel(),'time':moment().format('HH:mm:ss')});
+  localStorage.removeItem("channel");
+  $('#chName').text('None');
+  $('#channelMessages').empty();
+  updateChannels(channelLists());
+}

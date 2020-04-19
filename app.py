@@ -33,11 +33,14 @@ def ajax_channel():
         lst=channels[d]
         return jsonify({'users':lst['users'],'msg':lst['messages'][-100:]})
     return jsonify({'users':[],'msg':[]}) 
+@app.route("/ajax/all")
+def ajax_log():
+    return jsonify({'users':get_users(),'rest':channels})     
 def channel_messages(obj):
     channels[obj['room']]['messages'].append(obj['msg'])
-    socketio.emit('new message',{'msg':obj['msg'],'user':obj['user']}, room=obj['room'])
-socketio.on_event('new message',channel_messages)    
-
+    channels[obj['room']]['messages']=channels[obj['room']]['messages'][-100:]
+    socketio.emit('new message',{'msg':channels[obj['room']]['messages'],'user':obj['user']}, room=obj['room'])#obj['msg']
+socketio.on_event('new message',channel_messages)   
 @socketio.on('user logout')
 def user_disconnect(data):
     user=data['user']
@@ -89,6 +92,7 @@ def on_leave(data):
     user = data['user']
     room = data['room']
     leave_room(room)
+    channels[room]['users'].remove(user)
     send(user + ' has left the room.', room=room)
 
 
