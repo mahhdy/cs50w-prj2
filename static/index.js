@@ -15,6 +15,7 @@ const inputUpdate=(el,add)=>{
   const s=$(el)[0].selectionStart;
   const cont=$(el).val();
   $(el).val(cont.substring(0,s)+String(add)+cont.substring(s));
+  setTimeout(()=> $(el).focus(), 500);
 };
 // var socket = io.connect(location.protocol + '//' + document.domain + ':' + location.port);
 var socket = io();
@@ -92,7 +93,8 @@ const connect=u=>socket.emit('user connect', {'user': u});
 const addChannel = (justModal) => {
   const node=$('#addChannelModal');
   if (justModal) {
-    return $(node).modal();
+    $(node).modal();
+    return setTimeout(()=> $('#channelName').focus(), 500);
   }
   let c = $('#channelName').val().trim();
   cList=$('#channels li').text().split('Join');
@@ -135,7 +137,7 @@ const updateChannels=list=>{
   let c=channel();
   if (list.indexOf(c)==-1){
     channelSwitch();
-    $('#channelMessages').append(`<h1 class="text-center">${c} is Deleted.`);
+    $('#channelMessages').append(`<h1 class="text-center">${c == null?'No Channel is Selected Yet!': c+' is Deleted.'} </h1>`);
   }
   list.forEach(el => $('#channels').append(channelLine(el,el == channel() ? 'active' : '')));
 };

@@ -102,8 +102,5 @@ def on_leave(data):
     send(user + ' has left the room.', room=room)
     sentUpdate()
 
-
-
-
 if __name__ == '__main__':
     socketio.run(app)
