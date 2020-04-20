@@ -6,6 +6,9 @@
 
 ### https://cs50w-prj02.herokuapp.com/
 
+## App Review on youtube
+![](https://www.youtube.com/watch?v=A3WaImK_7lA)
+
 ## App Preview
 current UI is a little bit different than these pictures. 
 Join with Dislay Name
