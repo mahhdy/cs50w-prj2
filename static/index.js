@@ -134,6 +134,7 @@ const loadMsg = () => {
 const updateChannels=list=>{
   if (!list){return false;}
   $('#channels').empty();
+  if (list.indexOf(channel())==-1){deletChannel();}
   list.forEach(el => $('#channels').append(channelLine(el,el == channel() ? 'active' : '')));
 };
 const updateUsers=list=>{
@@ -173,8 +174,7 @@ const delRoom=()=>{
   let c=channel();
   socket.emit('delete room',{'user':user(),'room':c,'time':moment().format('HH:mm:ss')}, r => {
     if (r) {
-      channelSwitch();
-      $('#channelMessages').append(`<h1 class="text-center">${c} is Deleted.`)
+      deletChannel();
     } else{
       alert('Only Channel Owners can Delete the channels!');
     } 
@@ -185,4 +185,8 @@ const channelSwitch=()=>{
   $('#chName').text('None');
   $('#channelMessages').empty();
   updateChannels(channelLists());
+}
+const deletChannel=()=>{
+  channelSwitch();
+  $('#channelMessages').append(`<h1 class="text-center">${c} is Deleted.`);
 }
