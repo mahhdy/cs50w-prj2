@@ -1,7 +1,7 @@
 import os,sys
 from collections import OrderedDict
 from flask import Flask, render_template, jsonify, request
-from flask_socketio import SocketIO,send, emit, join_room, leave_room
+from flask_socketio import SocketIO,send, emit, join_room, leave_room,rooms,close_room
 from werkzeug.utils import secure_filename
 
 app = Flask(__name__)
@@ -14,7 +14,7 @@ online_users = {}
 def get_users():
     return [list(x) for x in online_users.items()]
 def sentUpdate():
-    emit('update',{'users':get_users(),'msg':channels,'channels':[*channels]}, broadcast=True)
+    emit('update',{'users':get_users(),'msg':channels,'channels':[*channels],'join':rooms()}, broadcast=True)
 @app.route("/")
 def index():
     return render_template('index.html')
@@ -35,12 +35,12 @@ def ajax_channel():
     return jsonify({'users':[],'msg':[]}) 
 @app.route("/ajax/all")
 def ajax_log():
-    return jsonify({'users':get_users(),'rest':channels})     
+    return jsonify({'users':get_users(),'rest':channels})
+@socketio.on('new message')
 def channel_messages(obj):
     channels[obj['room']]['messages'].append(obj['msg'])
     channels[obj['room']]['messages']=channels[obj['room']]['messages'][-100:]
-    socketio.emit('new message',{'msg':channels[obj['room']]['messages'],'user':obj['user']}, room=obj['room'])#obj['msg']
-socketio.on_event('new message',channel_messages)   
+    socketio.emit('new message',{'msg':obj['msg'],'user':obj['user'],'room':obj['room']}, room=obj['room'])
 @socketio.on('user logout')
 def user_disconnect(data):
     user=data['user']
@@ -57,7 +57,6 @@ def userJoin(data):
     user=data['user']
     online_users[user]=request.sid
     sentUpdate()
-    # emit('all users',{'users':get_users()}, broadcast=True)
 @socketio.on('user online')
 def on_online(d):
     u=d['user']
@@ -78,15 +77,22 @@ def add_channel(data):
     sentUpdate()
 @socketio.on('join')
 def on_join(data):
-    d=data
-    u = d['user']
-    r=d['room']
-    d['msg']=[u,u + ' has entered the room.',d['time']]
+    u = data['user']
+    r=data['room']
+    channels[r]['messages'].append([u,u + ' has entered '+r,data['time']])
     join_room(r)
-    m=channels[r]
-    m['users'].append(u)
-    channel_messages(d)
-
+    channels[r]['users'].append(u)
+    socketio.emit('all message',{'msg':channels[r]['messages'][-100:],'user':u,'room':r}, room=r)
+@socketio.on('delete room')
+def del_room(data):
+    r = data['room']
+    u = data['user']
+    if channels[r]['created_by']==u:
+        close_room(r)
+        channels.pop(r,None)
+        sentUpdate()
+        return True
+    return False
 @socketio.on('leave')
 def on_leave(data):
     user = data['user']

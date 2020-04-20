@@ -1,3 +1,4 @@
+var global={};
 $(() => {
   faceOf();
   $('[data-toggle="tooltip"]').tooltip();
@@ -5,6 +6,7 @@ $(() => {
   const picker=new EmojiButton();
   picker.on('emoji',emoji=>inputUpdate($('#msg'),emoji));
   $('#emj').click(()=>picker.togglePicker());
+  $('#username').keypress(e=>{if (e.which == 13) {join(); return false}});
   $('#msg').keypress(e=>{if (e.which == 13) {sendMsg(); return false}});
   $('#channelName').keypress(e=>{if (e.which == 13) {addChannel(); return false}});
   // $('.toast').toast();
@@ -14,7 +16,9 @@ const inputUpdate=(el,add)=>{
   const cont=$(el).val();
   $(el).val(cont.substring(0,s)+String(add)+cont.substring(s));
 };
-var socket = io.connect(location.protocol + '//' + document.domain + ':' + location.port);
+// var socket = io.connect(location.protocol + '//' + document.domain + ':' + location.port);
+var socket = io();
+
 const user = () => localStorage.getItem('user');
 const channel = () => localStorage.getItem('channel');
 const userLine=(a,b)=> `<li class="list-group-item ${b}">${a[0]}<i class="far fa-comments fa-lg ml-2" onclick='sendPM("${a[1]}")' data-toggle="tooltip" data-placement="right" title='chat'></i></li>`;
@@ -24,7 +28,7 @@ const messageLine=a=>{
   if (a[0] == user()){
     node=`<div class="text-right">${a[1]} :<small class="text-muted"><u>${a[0]}</u> (${a[2]}) </small></div>`;
   } else {node=`<div class="text-left"><small class="text-muted"> (${a[2]}) <u>${a[0]}</u></small>: ${a[1]}</div>`;}
-  $('#channelMessages').append(node);
+  $('#channelMessages').prepend(node);
 };
 const faceOf = () => {
   if (user()) {
@@ -60,16 +64,21 @@ const updateEnv=m=>{
   $('#chName').text(channel()?channel():'None');
 };
 socket.on('update', (m) => {
+  global=m;
   updateEnv(m);
 });
 socket.on('joint to channel', (m) => {
   $('#channelMessages').empty();
   updateChannels(m.channels);
 });
-socket.on('new message', (data) => {
+socket.on('new message',(data) => {
+  if (data.room!=channel()){return false}
+  messageLine(data.msg);
+});
+socket.on('all message', (data) => {
+  if (data.room!=channel()){return false}
   $('#channelMessages').empty();
   data.msg.forEach(e=>messageLine(e));
-  // $('#channelMessages').append(messageLine(data.msg));
 });
 const join = () => {
   const u = $('#username').val();
@@ -139,15 +148,15 @@ const joinChannel=name=>{
   socket.emit('join',{'user':user(),'room':name,'time':moment().format('HH:mm:ss')});
 };
 const sendPM=uID=>{
-  // joinChannel(uID);
+  alert('Under Development');
 };
 const sendMsg=()=>{
   const msg=$('#msg').val().trim();
   const u=user();
   const c=channel();
-  if (c=='None'){return alert('Please join a channel first!');}
+  if (c=='None' || !c){return alert('Please join a channel first!');}
   const t=moment().format('HH:mm:ss');
-  if (msg.length<2 || msg.length>100){return alert('message should be more than 3 and less than 100 characters!');}
+  if (msg.length<2 || msg.length>400){return alert('message should have between 1 and 400 characters!');}
   $('#msg').val('');
   socket.emit('new message',{'user':u,'msg':[u,msg,t],'room':c,'time':t});
 };
@@ -158,6 +167,20 @@ const channelLists=()=>{
 }
 const leaveRoom=()=>{
   socket.emit('leave',{'user':user(),'room':channel(),'time':moment().format('HH:mm:ss')});
+  channelSwitch();
+};
+const delRoom=()=>{
+  let c=channel();
+  socket.emit('delete room',{'user':user(),'room':c,'time':moment().format('HH:mm:ss')}, r => {
+    if (r) {
+      channelSwitch();
+      $('#channelMessages').append(`<h1 class="text-center">${c} is Deleted.`)
+    } else{
+      alert('Only Channel Owners can Delete the channels!');
+    } 
+  });
+}
+const channelSwitch=()=>{
   localStorage.removeItem("channel");
   $('#chName').text('None');
   $('#channelMessages').empty();
