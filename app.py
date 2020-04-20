@@ -100,6 +100,7 @@ def on_leave(data):
     leave_room(room)
     channels[room]['users'].remove(user)
     send(user + ' has left the room.', room=room)
+    sentUpdate()
 
 
 

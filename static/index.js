@@ -56,8 +56,6 @@ const logout = () => {
   faceOf();
 };
 const updateEnv=m=>{
-  $('#onUsers').empty();
-  $('#channels').empty();  
   updateUsers(m.users);
   updateChannels(m.channels);
   $('#usCount').text(m.users.length);
@@ -134,13 +132,17 @@ const loadMsg = () => {
 const updateChannels=list=>{
   if (!list){return false;}
   $('#channels').empty();
-  if (list.indexOf(channel())==-1){deletChannel();}
+  let c=channel();
+  if (list.indexOf(c)==-1){
+    channelSwitch();
+    $('#channelMessages').append(`<h1 class="text-center">${c} is Deleted.`);
+  }
   list.forEach(el => $('#channels').append(channelLine(el,el == channel() ? 'active' : '')));
 };
 const updateUsers=list=>{
   $('#onUsers').empty();
   list.forEach(el => $('#onUsers').append(userLine(el,el[0] == user() ? 'active' : '')));
-} ;
+};
 const joinChannel=name=>{
   localStorage.setItem('channel',name);
   $('#channelMessages').empty();
@@ -173,9 +175,7 @@ const leaveRoom=()=>{
 const delRoom=()=>{
   let c=channel();
   socket.emit('delete room',{'user':user(),'room':c,'time':moment().format('HH:mm:ss')}, r => {
-    if (r) {
-      deletChannel();
-    } else{
+    if (!r) {
       alert('Only Channel Owners can Delete the channels!');
     } 
   });
@@ -184,9 +184,4 @@ const channelSwitch=()=>{
   localStorage.removeItem("channel");
   $('#chName').text('None');
   $('#channelMessages').empty();
-  updateChannels(channelLists());
-}
-const deletChannel=()=>{
-  channelSwitch();
-  $('#channelMessages').append(`<h1 class="text-center">${c} is Deleted.`);
 }
