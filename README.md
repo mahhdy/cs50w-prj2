@@ -7,7 +7,7 @@
 ### https://cs50w-prj02.herokuapp.com/
 
 ## App Review on youtube
-![You Tube Link](https://www.youtube.com/watch?v=A3WaImK_7lA)
+[You Tube Link](https://www.youtube.com/watch?v=A3WaImK_7lA)
 
 ## App Preview
 current UI is a little bit different than these pictures. 
