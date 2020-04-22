@@ -1,6 +1,6 @@
 {
-    "python.pythonPath": "venv/bin/python3",
-    "jshint.options": {"esversion": 6},
+    "python.pythonPath": "C:\\Users\\mahhd\\AppData\\Local\\Programs\\Python\\Python38\\python.exe",
+    "jshint.options": {"esversion": 8},
     "files.associations": {
     
     }

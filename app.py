@@ -18,7 +18,7 @@ def sentUpdate():
 @app.route("/")
 def index():
     return render_template('index.html')
-@socketio.on_error()        # Handles the default namespace
+@socketio.on_error()
 def error_handler(e):
     print(e)
     print('Error Occured at '+ request.event["message"]) # "my error event"
@@ -33,6 +33,12 @@ def ajax_channel():
         lst=channels[d]
         return jsonify({'users':lst['users'],'msg':lst['messages'][-100:]})
     return jsonify({'users':[],'msg':[]}) 
+@app.route("/ajax/check")
+def ajax_check():
+    u=request.values.get('name')
+    if u in online_users:
+        return jsonify({'res':True})
+    return jsonify({'res':False})
 @app.route("/ajax/all")
 def ajax_log():
     return jsonify({'users':get_users(),'rest':channels})
@@ -66,6 +72,8 @@ def on_online(d):
         if not d['room'] in channels:
             channels[d['room']]={'users':[u],'messages':[[u,'Room is Activated',d['time']]],'created_by':u}
         join_room(d['room'])
+        if not u in channels[d['room']]['users']:
+            channels[d['room']]['users'].append(u)
     sentUpdate()
 @socketio.on('channel created')
 def add_channel(data):
@@ -79,10 +87,12 @@ def add_channel(data):
 def on_join(data):
     u = data['user']
     r=data['room']
-    channels[r]['messages'].append([u,u + ' has entered '+r,data['time']])
     join_room(r)
     channels[r]['users'].append(u)
-    socketio.emit('all message',{'msg':channels[r]['messages'][-100:],'user':u,'room':r}, room=r)
+    sentUpdate()
+    # socketio.emit('all message',{'msg':channels[r]['messages'][-100:],'user':u,'room':r}, room=r,include_self=True)
+    socketio.emit('announce alert',{'alert':u+' is happy to join the '+r,'user':u,'room':r}, room=r,include_self=False)
+    return channels[r]['messages'][-100:]
 @socketio.on('delete room')
 def del_room(data):
     r = data['room']
@@ -97,10 +107,12 @@ def del_room(data):
 def on_leave(data):
     user = data['user']
     room = data['room']
-    leave_room(room)
-    channels[room]['users'].remove(user)
-    send(user + ' has left the room.', room=room)
-    sentUpdate()
+    if room in channels:
+        leave_room(room)
+        channels[room]['users'].remove(user)
+        socketio.emit('announce alert',{'alert':user+' has left '+room,'user':user,'room':room}, room=room,include_self=False)
+        if data['doU']:
+            sentUpdate()
 
 if __name__ == '__main__':
     socketio.run(app)

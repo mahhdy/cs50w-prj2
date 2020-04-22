@@ -1,5 +1,5 @@
 .list-group {
-    height: 200px;
+    /* display: none; */
     overflow: auto;
   }
 
