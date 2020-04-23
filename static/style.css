@@ -1,15 +1,17 @@
 .list-group {
-    /* display: none; */
     overflow: auto;
   }
 
-.list-group-item {
-    padding: .25rem 1rem;
-  }
 .far, .fas {
     display: none;
 }
 
 li:hover .far, li:hover .fas, .far:hover, .fas:hover, h5:hover + .far, #chNameP:hover >.fas{
     display: inline-block;
+}
+#hooverList1,#hooverList0{
+  display: none;
+}
+#hooverList1[data-show],#hooverList1[data-show] li, #hooverList0[data-show],#hooverList0[data-show] li{
+  display: block;
 }

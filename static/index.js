@@ -1,7 +1,7 @@
-var global={};
+var gb={};
+let popperInstance = null;
 $(() => {
   faceOf();
-  $('[data-toggle="tooltip"]').tooltip();
   $('#userJoin').on('click', join);
   const picker=new EmojiButton();
   picker.on('emoji',emoji=>inputUpdate($('#msg'),emoji));
@@ -13,22 +13,32 @@ $(() => {
     $('.list-group-flush').addClass('d-none d-sm-block d-md-none');
     $(this).next().removeClass('d-none d-sm-block d-md-none');
   });
-    
-  // $('.toast').toast();
+  $('#usrCount').parent().add('#hooverList1').on('mouseenter focus',()=>createP('#hooverList1','#usrCount'));
+  $('#usrCount').parent().add('#hooverList1').on('mouseleave blur',()=>destroy('#hooverList1'));  
 });
+var socket = io();// var socket = io.connect(location.protocol + '//' + document.domain + ':' + location.port);
 const inputUpdate=(el,add)=>{
   const s=$(el)[0].selectionStart;
   const cont=$(el).val();
   $(el).val(cont.substring(0,s)+String(add)+cont.substring(s));
   setTimeout(()=> $(el).focus(), 500);
 };
-// var socket = io.connect(location.protocol + '//' + document.domain + ':' + location.port);
-var socket = io();
-
+const createP=(a,b)=>{
+  $(a).attr('data-show','');
+  popperInstance = Popper.createPopper($(b).get(0), $(a).get(0));
+};
+const destroy=a=> {
+  if (popperInstance) {
+    $(a).removeAttr('data-show');
+    popperInstance.destroy();
+    popperInstance = null;
+  }
+};
 const user = () => localStorage.getItem('user');
 const channel = () => localStorage.getItem('channel');
-const userLine=(a,b)=> `<li class="list-group-item ${b}" data-user='${a[0]}' onclick='sendPM("${a[1]}")' >${a[0]}<span class="badge badge-warning ml-1">channel</span><i class="far fa-comments fa-lg ml-2" onclick='sendPM("${a[1]}")' data-toggle="tooltip" data-placement="right" title='chat'></i></li>`;
-const channelLine=a=>`<li class="list-group-item" data-channel='${a}' onclick='joinChannel("${a}")' ><span class="badge badge-pill badge-warning mr-2">${global.msg? global.msg[a].users.length:0}</span>${a}<i class="fas fa-sign-in-alt fa-lg ml-2" onclick='' data-toggle="tooltip" data-placement="right" title='Join'></i></li>`;//joinChannel("${a}")
+const userLine=(a,b)=>`<li class="list-group-item d-flex flex-grow-1 justify-content-between align-items-center ${b} pt-1 pb-1 pl-2 pr-1" data-user='${a[0]}' onclick='sendPM("${a[1]}")' >${a[0]}<i class="far fa-comments fa-lg ml-2" onclick='sendPM("${a[1]}")' data-toggle="tooltip" data-placement="right" title='chat'></i><span class="badge badge-warning ml-1 ml-auto">${userChannel(a[0])}</span></li>`;
+const channelLine=a=>`<li class="list-group-item d-flex flex-grow-1 justify-content-between align-items-center pt-1 pb-1 pl-2 pr-1" data-channel='${a}' onclick='joinChannel("${a}")' >${a}<i class="fas fa-sign-in-alt fa-lg ml-2" onclick='' data-toggle="tooltip" data-placement="right" title='Join'></i><span class="badge badge-pill badge-warning mr-2 ml-auto">${gb.msg? gb.msg[a].users.length:0}</span></li>`;//joinChannel("${a}")
+const membersLine=a=>`<li class="list-group-item bg-secondary text-white pl-2 pt-1 pb-1" style="Width: 120px;">${a}</li>`;
 const messageLine=a=>{
   let node='';
   if (a[0] == user()){
@@ -64,12 +74,17 @@ const logout = () => {
 const updateEnv=m=>{
   updateUsers(m.users);
   updateChannels(m.channels);
+  let c=channel();
   $('#usCount').text(`(${m.users.length})`);
   $('#cnCount').text(`(${m.channels.length})`);
-  $('#chName').text(channel()?channel():'None');
+  $('#chName').text(c?c:'None');
+  if (c && m.msg){
+    $('#usrCount').text(`(${m.msg[c]?m.msg[c].users.length:0})`);
+    updateMembers(m.msg[c].users,'#hooverList1');
+  }
 };
 socket.on('update', (m) => {
-  global=m;
+  gb=m;
   updateEnv(m);
 });
 socket.on('joint to channel', (m) => {
@@ -86,7 +101,7 @@ socket.on('new message',(data) => {
 });
 const join = () => {
   const u = $('#username').val();
-  if (u.length < 3) {return Swal.fire({icon: 'error',title: 'Ooops..', text: 'Use stronger username!'});}
+  if (u.length < 3 || u.length > 30 ) {return Swal.fire({icon: 'error',title: 'Ooops..', text: 'Display Names Shoudl be between 3 and 30 characters!'});}
   $.get('/ajax/check',{name:u},d=>{
     if (d.res) {return Swal.fire({
       icon: 'error',
@@ -112,8 +127,8 @@ const addChannel =async () => {
     inputPlaceholder: 'Type new chanel name here...',
     showCancelButton: true,
     inputValidator: (value) => {
-      if (value.trim().length<3) {return 'PLease Select Stronger Name!';}
-      if (global.channels.indexOf(value)>-1){return'this Channel name already exist!';}
+      if (value.trim().length<3 ||value.trim().length>20 ) {return 'PLease Select a Name between 3 and 20 characters!';}
+      if (gb.channels.indexOf(value)>-1){return'this Channel name already exist!';}
     }
   });  
   if (text) {
@@ -164,10 +179,24 @@ const updateChannels=list=>{
   }
   list.sort().forEach(el => $('#channels').append(channelLine(el)));
   $(`[data-channel="${c}"]`).addClass('active');
+  $('#channels li').on('mouseenter focus',function(){
+    let no=gb.msg[$(this).data('channel')].users;
+    $('#hooverList0').empty();
+    if (no.length){
+      updateMembers(no,'#hooverList0');
+    } else {$('#hooverList0').append('<li class="list-group-item bg-secondary text-white pl-2 pt-1 pb-1">No Member!</li>');}
+    createP('#hooverList0',$(this));
+  });
+  $('#channels li').on('mouseleave blur',()=>destroy('#hooverList0'));
 };
 const updateUsers=list=>{
   $('#onUsers').empty();
   list.sort().forEach(el => $('#onUsers').append(userLine(el,el[0] == user() ? 'active' : '')));
+};
+const updateMembers=(list,node)=>{
+  $(node).empty();
+  list.sort().forEach(e=>{
+    $(node).append(membersLine(e));});
 };
 const joinChannel=name=>{
   if (channel()){socket.emit('leave',{'user':user(),'room':channel(),'doU':false});}  
@@ -176,7 +205,11 @@ const joinChannel=name=>{
   $('#chName').text(name);
   $('[data-channel]').removeClass('active');
   $(`[data-channel="${name}"]`).addClass('active');
+  $('#privateMsg').prepend(`<li class="list-group-item d-flex flex-grow-1 justify-content-between align-items-center">${name}<small class='ml-auto'><time>${moment().format('HH:mm:ss')}</time></small></li>`);
+  $('#privateMsg li').removeClass('bg-success');
+  $('#privateMsg li:first').addClass('bg-success');
   socket.emit('join',{'user':user(),'room':name,'time':moment().format('HH:mm:ss')},d=>d.forEach(e=>messageLine(e)));
+  
 };
 const sendPM=uID=> Swal.fire({icon: 'info',title: 'Ooops..', text: 'Under Development!'});
 const sendMsg=()=>{
@@ -203,4 +236,11 @@ const channelSwitch=()=>{
   localStorage.removeItem("channel");
   $('#chName').text('None');
   $('#channelMessages').empty();
+  $('#privateMsg li').removeClass('bg-success');
+};
+const userChannel=u=>{
+  for (let a in gb.msg){
+    if (gb.msg[a].users.indexOf(u)>-1){ return a;}
+  }
+  return '';
 };

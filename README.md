@@ -38,12 +38,12 @@ chat inside Rooms! (Full Functions!)
 * You can Leave the channels.
 * Showing number of active user per channels as badges.
 * Seeing the current channel of each user as badges.
+* online User and Channe List card are hidden before manually openning them.
+* list of active users per group can be seen on mouse hoover active user#.
 
 ## To do
 
 * Sending Private Messages between users.
-* online User and Channe List card to be hidden before manually openning them.
-* seeing list of active users per group on mouse hoover.
 * informing the user of receiving private messages.
 * adding profile page, shows channel created and post statistics.
 * invite users to add to the rooms.
