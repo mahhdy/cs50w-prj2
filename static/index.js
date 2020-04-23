@@ -205,7 +205,7 @@ const joinChannel=name=>{
   $('#chName').text(name);
   $('[data-channel]').removeClass('active');
   $(`[data-channel="${name}"]`).addClass('active');
-  $('#privateMsg').prepend(`<li class="list-group-item d-flex flex-grow-1 justify-content-between align-items-center">${name}<small class='ml-auto'><time>${moment().format('HH:mm:ss')}</time></small></li>`);
+  $('#privateMsg').prepend(`<li class="list-group-item d-flex flex-grow-1 justify-content-between align-items-center pt-1 pb-1 pl-2 pr-1">${name}<small class='ml-auto'><time>${moment().format('HH:mm:ss')}</time></small></li>`);
   $('#privateMsg li').removeClass('bg-success');
   $('#privateMsg li:first').addClass('bg-success');
   socket.emit('join',{'user':user(),'room':name,'time':moment().format('HH:mm:ss')},d=>d.forEach(e=>messageLine(e)));

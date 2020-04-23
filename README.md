@@ -13,6 +13,8 @@
 current UI is a little bit different than these pictures.
 Join with Dislay Name
 
+[GIF image](https://i.imgur.com/3hQT6gc.gifv)
+
 ![Join with Dislay Name](https://imgur.com/JWbwCtA.png)
 
 Main Page
